@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#2B2B2B">
 <title>Painel de campo</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -22,8 +22,10 @@
   }
   @media (prefers-reduced-motion: reduce){ *{ transition-duration:.01ms !important; animation-duration:.01ms !important; } }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:#141414;color:var(--texto);font:16px/1.35 "Segoe UI",Roboto,system-ui,sans-serif}
-  .palco{height:100%;display:flex;justify-content:center}
+  html,body{margin:0;height:100%;overflow:hidden;background:#141414;color:var(--texto);font:16px/1.35 "Segoe UI",Roboto,system-ui,sans-serif}
+  /* A tela tem a altura da parte VISIVEL: com o teclado aberto ela encolhe, e
+     a folha de escrever fica em cima do teclado, sem ninguem rolar nada. */
+  .palco{position:fixed;top:0;left:0;right:0;height:var(--alt,100%);display:flex;justify-content:center}
   .fone{width:100%;max-width:520px;height:100%;background:var(--corpo);overflow:hidden;
         position:relative;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
   .topo{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}
@@ -71,7 +73,7 @@
   /* ── a folha que sobe: escrever e classificar num gesto só ── */
   .veu{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity var(--medio)}
   .veu.on{opacity:1;pointer-events:auto}
-  .folha{position:absolute;left:0;right:0;bottom:0;background:#333;border-radius:18px 18px 0 0;padding:16px 16px 20px;transform:translateY(105%);
+  .folha{position:absolute;left:0;right:0;bottom:0;max-height:100%;overflow-y:auto;background:#333;border-radius:18px 18px 0 0;padding:16px 16px 20px;transform:translateY(105%);
          transition:transform var(--abrir) var(--chega)}
   .folha.on{transform:none}
   .folha textarea,.folha input{width:100%;background:none;border:0;border-bottom:1px solid var(--sep);color:var(--texto);font:17px "Segoe UI",Roboto,sans-serif;
@@ -128,7 +130,7 @@
 </div>
 
 <script>
-const VERSAO = '1';
+const VERSAO = '2';
 const CHAVE = 'painel-de-campo-v1';
 const Q = {
   fazer:    { nome: 'FAZER AGORA', pede: 'é o trabalho de hoje',  cor: 'var(--q-fazer)',    imp: true,  urg: true },
@@ -232,11 +234,26 @@ function folha(tipo, dado) {
   } else if (tipo === 'dono') {
     f.innerHTML = '<div class="perg">Para quem?</div><input id="txtDono2" value="' + esc(dado.dono || '') + '" placeholder="o nome de quem faz"><div class="guardar" data-dono-ok="' + dado.id + '">guardar</div>';
   }
+  // Abrir a folha entra no histórico UMA vez (redesenhar a folha não entra de novo).
+  if (!f.classList.contains('on')) history.pushState({ camada: 'folha' }, '');
   $('veu').classList.add('on'); f.classList.add('on');
   const foco = f.querySelector('textarea, input:not([readonly]):not([type=file])');
   if (foco && tipo !== 'menu' && tipo !== 'mudar') setTimeout(() => foco.focus({ preventScroll: true }), 60);
 }
-function fechar() { E.folha = null; $('veu').classList.remove('on'); $('folha').classList.remove('on'); }
+// ── O VOLTAR DO CELULAR (05/10, visto por ele no aparelho) ──
+// O botão e o gesto de voltar do Android andam no HISTÓRICO do navegador. O app
+// não punha nada lá, então o primeiro voltar já saía dele. Agora cada camada que
+// abre (um quadrante, a folha) entra no histórico, e TODO fechamento passa pelo
+// voltar: o toque em "‹ mesa", o toque fora da folha e o botão do sistema fazem
+// a mesma coisa, pelo mesmo caminho.
+function fecharFolhaNaTela() { E.folha = null; $('veu').classList.remove('on'); $('folha').classList.remove('on'); if (document.activeElement) document.activeElement.blur(); }
+function fechar() { if ($('folha').classList.contains('on')) history.back(); }
+window.addEventListener('popstate', function () {
+  if ($('folha').classList.contains('on')) fecharFolhaNaTela();
+  else if (E.aberto) E.aberto = null;
+  if (E.abaPendente) { E.aba = E.abaPendente; E.abaPendente = null; }
+  desenhar();
+});
 let relogio;
 function avisar(texto, desfazer) {
   const a = $('aviso'); a.innerHTML = esc(texto) + (desfazer ? '<span id="desf">desfazer</span>' : ''); a.classList.add('on');
@@ -246,9 +263,13 @@ function avisar(texto, desfazer) {
 
 document.addEventListener('click', (ev) => {
   const a = (s) => ev.target.closest(s); let e;
-  if ((e = a('[data-aba]'))) { E.aba = e.dataset.aba; E.aberto = null; desenhar(); return; }
-  if ((e = a('[data-abrir]'))) { E.aberto = e.dataset.abrir; desenhar(); return; }
-  if (a('[data-voltar]')) { E.aberto = null; desenhar(); return; }
+  if ((e = a('[data-aba]'))) {
+    // Trocar de aba com um quadrante aberto: primeiro desfaz a camada, depois troca.
+    if (E.aberto) { E.abaPendente = e.dataset.aba; history.back(); return; }
+    E.aba = e.dataset.aba; desenhar(); return;
+  }
+  if ((e = a('[data-abrir]'))) { E.aberto = e.dataset.abrir; history.pushState({ camada: 'quadrante' }, ''); desenhar(); return; }
+  if (a('[data-voltar]')) { history.back(); return; }
   if (a('#novo')) { E.rasc = { t: '', imp: null, urg: null, dono: '', id: null }; folha('nova'); return; }
   if (a('#veu')) { fechar(); return; }
   if (a('[data-menu]')) { folha('menu'); return; }
@@ -262,7 +283,7 @@ document.addEventListener('click', (ev) => {
     const k = quadranteDe(r.imp, r.urg);
     if (r.id) { const n = D.notas.find((x) => x.id === r.id); n.q = k; delete n.chegou; if (k === 'delegar') n.dono = r.dono || n.dono || ''; }
     else D.notas.unshift({ id: D.seq++, q: k, t: r.t.trim(), dono: k === 'delegar' ? r.dono : undefined });
-    gravar(); fechar(); E.aberto = null; desenhar(); avisar('Foi para ' + Q[k].nome.toLowerCase() + '.'); return;
+    gravar(); fechar(); desenhar(); avisar('Foi para ' + Q[k].nome.toLowerCase() + '.'); return;
   }
   if ((e = a('[data-feita]'))) {
     const i = D.notas.findIndex((x) => x.id === +e.dataset.feita), n = D.notas[i];
@@ -309,6 +330,16 @@ document.addEventListener('change', (ev) => {
   r.readAsText(ev.target.files[0]);
 });
 desenhar();
+
+// ── O TECLADO (05/10, visto por ele no aparelho) ──
+// No Android o teclado cobre a página sem encolher a área de layout, e a folha
+// de escrever ficava atrás dele. A altura da tela passa a ser a da parte VISÍVEL.
+(function () {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const ajustar = function () { document.documentElement.style.setProperty('--alt', vv.height + 'px'); window.scrollTo(0, 0); };
+  vv.addEventListener('resize', ajustar); vv.addEventListener('scroll', ajustar); ajustar();
+})();
 
 // ── Abrir sem internet, e não ficar preso numa versão velha ──
 // O service worker busca na rede primeiro e guarda o que veio; sem rede, entrega
