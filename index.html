@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2B2B2B">
+<title>Painel de campo</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<!--
+  Painel de campo: uma mesa de decisao (importante x urgente), notas e tarefas.
+  Nao tem servidor e nao tem conta. Tudo o que a pessoa escreve fica no aparelho.
+  Abre sem internet depois da primeira vez.
+-->
+<style>
+  :root{
+    --corpo:#2B2B2B; --tile:#303030; --sobre:#353535; --texto:#F2F2F2; --fraco:#C2C2C2; --apagado:#8C8C8C;
+    --sep:#505050; --acento:#E6B905; --bom:#7ADC9A; --ruim:#FF8585; --acao:#9CDCFE;
+    --q-fazer:#FF780A; --q-planejar:#F2F2F2; --q-delegar:#6CB6E8; --q-eliminar:#B38A5A;
+    --rapido:100ms; --medio:200ms; --abrir:280ms; --chega:cubic-bezier(.2,0,0,1);
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition-duration:.01ms !important; animation-duration:.01ms !important; } }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#141414;color:var(--texto);font:16px/1.35 "Segoe UI",Roboto,system-ui,sans-serif}
+  .palco{height:100%;display:flex;justify-content:center}
+  .fone{width:100%;max-width:520px;height:100%;background:var(--corpo);overflow:hidden;
+        position:relative;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+  .topo{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}
+  .topo h1{font-size:19px;margin:0;font-weight:600;flex:1}
+  .topo .volta{font-size:15px;color:var(--acao);padding:8px 4px;cursor:pointer}
+  .topo .mais{color:var(--apagado);font-size:22px;padding:4px 8px;cursor:pointer}
+  .tela{flex:1;overflow-y:auto;padding:4px 12px 96px}
+  .tela > *{animation:entra var(--abrir) var(--chega)}
+  @keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ── a mesa: 2 x 2, e ela cabe inteira ── */
+  .mesa{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:100%;min-height:520px}
+  .quad{background:var(--tile);border-radius:14px;padding:12px;display:flex;flex-direction:column;cursor:pointer;border-top:4px solid var(--cq);
+        transition:transform var(--rapido) var(--chega), background var(--rapido)}
+  .quad:active{transform:scale(.97);background:var(--sobre)}
+  .quad .nome{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--cq)}
+  .quad .n{font-size:40px;font-weight:600;line-height:1.05;margin-top:2px}
+  .quad .pede{font-size:12px;color:var(--apagado);margin-bottom:8px}
+  .quad .amostra{font-size:13px;color:var(--fraco);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:4px}
+  .quad .chegou{margin-top:auto;font-size:12px;color:var(--q-fazer);display:flex;align-items:center;gap:6px}
+  .pulso{width:9px;height:9px;border-radius:50%;background:var(--q-fazer);animation:pulsa 1.4s ease-in-out infinite;flex:none}
+  @keyframes pulsa{50%{transform:scale(1.6);opacity:.45}}
+
+  /* ── a lista de um quadrante ── */
+  .cartao{background:var(--tile);border-radius:12px;padding:12px 12px 6px;margin-bottom:8px;border-left:4px solid var(--cq)}
+  .cartao .txt{font-size:16px}
+  .cartao .dono{font-size:13px;margin-top:4px;color:var(--fraco)}
+  .cartao .dono.sem{color:var(--ruim);font-weight:600}
+  .cartao .de{font-size:12px;color:var(--q-fazer);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .acoes{display:flex;gap:4px;margin-top:6px}
+  .acoes span{color:var(--acao);font-size:14px;padding:10px 10px;min-height:44px;display:flex;align-items:center;cursor:pointer;border-radius:8px}
+  .acoes span:active{background:var(--sobre)}
+  .acoes .fraca{color:var(--apagado);margin-left:auto}
+  .vazio{color:var(--apagado);font-size:14px;padding:24px 8px;text-align:center}
+
+  /* ── o botão de escrever, onde o polegar alcança ── */
+  .novo{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:var(--acento);
+        display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.5);transition:transform var(--rapido) var(--chega)}
+  .novo:active{transform:translateX(-50%) scale(.92)}
+  .novo svg{width:24px;height:24px}
+  .abas{position:absolute;left:0;right:0;bottom:0;height:62px;background:#232323;display:flex;border-top:1px solid #3a3a3a}
+  .abas div{flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--apagado);cursor:pointer;transition:color var(--medio)}
+  .abas div.on{color:var(--texto);font-weight:600;box-shadow:inset 0 2px 0 var(--acento)}
+
+  /* ── a folha que sobe: escrever e classificar num gesto só ── */
+  .veu{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity var(--medio)}
+  .veu.on{opacity:1;pointer-events:auto}
+  .folha{position:absolute;left:0;right:0;bottom:0;background:#333;border-radius:18px 18px 0 0;padding:16px 16px 20px;transform:translateY(105%);
+         transition:transform var(--abrir) var(--chega)}
+  .folha.on{transform:none}
+  .folha textarea,.folha input{width:100%;background:none;border:0;border-bottom:1px solid var(--sep);color:var(--texto);font:17px "Segoe UI",Roboto,sans-serif;
+         padding:8px 2px;outline:none;resize:none}
+  .folha textarea:focus,.folha input:focus{border-bottom-color:var(--acento)}
+  .perg{margin-top:16px;font-size:14px;color:var(--fraco)}
+  .sn{display:flex;gap:8px;margin-top:6px}
+  .sn span{flex:1;text-align:center;padding:12px;border-radius:12px;border:1px solid var(--sep);color:var(--fraco);cursor:pointer;min-height:44px;
+           transition:background var(--medio), color var(--medio), border-color var(--medio)}
+  .sn span.on{background:var(--acento);border-color:var(--acento);color:#1A1A1A;font-weight:600}
+  .destino{margin-top:16px;font-size:13px;color:var(--apagado);min-height:20px}
+  .destino b{color:var(--cq)}
+  .guardar{margin-top:14px;text-align:center;padding:14px;border-radius:14px;background:var(--acento);color:#1A1A1A;font-weight:600;cursor:pointer;
+           transition:opacity var(--medio), transform var(--rapido)}
+  .guardar.nao{opacity:.35;pointer-events:none}
+  .guardar:active{transform:scale(.98)}
+  .linha-menu{padding:14px 4px;color:var(--acao);cursor:pointer;border-bottom:1px solid #3d3d3d}
+  .linha-menu.perigo{color:var(--ruim)}
+  .aviso{position:absolute;left:12px;right:12px;bottom:146px;background:#3a3a3a;border-radius:12px;padding:12px 14px;font-size:14px;display:flex;gap:12px;
+         transform:translateY(20px);opacity:0;pointer-events:none;transition:all var(--medio) var(--chega)}
+  .aviso.on{transform:none;opacity:1;pointer-events:auto}
+  .aviso span{color:var(--acao);margin-left:auto;cursor:pointer}
+
+  /* ── notas e tarefas ── */
+  .nota{background:var(--tile);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .nota .cab{padding:14px 12px;font-weight:600;cursor:pointer;display:flex}
+  .nota .cab i{margin-left:auto;color:var(--apagado);font-style:normal;transition:transform var(--medio)}
+  .nota.on .cab i{transform:rotate(180deg)}
+  .nota .corpo{max-height:0;overflow:hidden;transition:max-height var(--abrir) var(--chega);color:var(--fraco);white-space:pre-wrap;font-size:15px;padding:0 12px}
+  .nota.on .corpo{max-height:400px;padding-bottom:12px}
+  .tarefa{display:flex;align-items:center;gap:12px;padding:12px 6px;min-height:48px;cursor:pointer;border-radius:10px}
+  .tarefa:active{background:var(--sobre)}
+  .tarefa .bola{width:22px;height:22px;border-radius:50%;border:2px solid var(--sep);flex:none;transition:all var(--medio)}
+  .tarefa.feita .bola{background:var(--bom);border-color:var(--bom)}
+  .tarefa.feita .t{color:var(--apagado);text-decoration:line-through}
+  .campo-novo{display:flex;gap:8px;margin:8px 4px 16px}
+  .campo-novo input{flex:1;background:none;border:0;border-bottom:1px solid var(--sep);color:var(--texto);font-size:16px;padding:8px 2px;outline:none}
+  .campo-novo input:focus{border-bottom-color:var(--acento)}
+
+</style>
+</head>
+<body>
+<div class="palco">
+  <div class="fone">
+    <div class="topo" id="topo"></div>
+    <div class="tela" id="tela"></div>
+    <div class="aviso" id="aviso"></div>
+    <div class="novo" id="novo" title="escrever"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16" stroke="#1A1A1A" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+    <div class="abas" id="abas"></div>
+    <div class="veu" id="veu"></div>
+    <div class="folha" id="folha"></div>
+  </div>
+
+</div>
+
+<script>
+const VERSAO = '1';
+const CHAVE = 'painel-de-campo-v1';
+const Q = {
+  fazer:    { nome: 'FAZER AGORA', pede: 'é o trabalho de hoje',  cor: 'var(--q-fazer)',    imp: true,  urg: true },
+  planejar: { nome: 'PLANEJAR',    pede: 'marcar hora para fazer', cor: 'var(--q-planejar)', imp: true,  urg: false },
+  delegar:  { nome: 'DELEGAR',     pede: 'quem faz por você?',     cor: 'var(--q-delegar)',  imp: false, urg: true },
+  eliminar: { nome: 'ELIMINAR',    pede: 'pode ignorar',           cor: 'var(--q-eliminar)', imp: false, urg: false },
+};
+const quadranteDe = (imp, urg) => Object.keys(Q).find((k) => Q[k].imp === imp && Q[k].urg === urg);
+const EXEMPLOS = {
+  notas: [
+    { id: 1, q: 'fazer',    t: 'Validar os retornos que chegaram ontem', exemplo: true },
+    { id: 2, q: 'planejar', t: 'Montar o acompanhamento da rota da semana que vem', exemplo: true },
+    { id: 3, q: 'delegar',  t: 'Verificar a ocorrência do atendimento de terça', dono: '', exemplo: true },
+    { id: 4, q: 'fazer',    t: 'Ligar para o técnico sobre o atendimento em campo', exemplo: true },
+  ],
+  longas: [{ id: 1, titulo: 'Como usar', corpo: 'Toque no botão amarelo para escrever.\nResponda as duas perguntas.\nA nota cai no quadrante certo.', aberta: false }],
+  tarefas: [{ id: 1, t: 'Exemplo de tarefa', feita: false }],
+  seq: 10,
+};
+let D;
+try { D = JSON.parse(localStorage.getItem(CHAVE)) || null; } catch (e) { D = null; }
+if (!D) D = JSON.parse(JSON.stringify(EXEMPLOS));
+const gravar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(D)); } catch (e) {} };
+
+const E = { aba: 'matriz', aberto: null, folha: null, rasc: { t: '', imp: null, urg: null, dono: '' } };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ── A nota que chega por link: o texto vai depois do "#", que não é enviado a servidor nenhum ──
+(function receber() {
+  const m = /[#&]n=([^&]+)/.exec(location.hash);
+  if (!m) return;
+  try {
+    // O mesmo link tocado duas vezes NÃO vira duas notas (visto no teste de 05/10).
+    D.recebidos = D.recebidos || [];
+    if (D.recebidos.indexOf(m[1]) >= 0) { history.replaceState(null, '', location.pathname + location.search); return; }
+    D.recebidos.push(m[1]); if (D.recebidos.length > 60) D.recebidos.shift();
+    const o = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    D.notas.unshift({ id: D.seq++, q: Q[o.q] ? o.q : 'fazer', t: String(o.t || '').slice(0, 400), chegou: String(o.de || 'alguém').slice(0, 40) });
+    gravar();
+  } catch (e) {}
+  history.replaceState(null, '', location.pathname + location.search);
+})();
+function linkDe(n) {
+  const cru = btoa(unescape(encodeURIComponent(JSON.stringify({ t: n.t, q: n.q, de: D.meuNome || 'colega' })))).replace(/\+/g, '-').replace(/\//g, '_');
+  return location.origin + location.pathname + '#n=' + cru;
+}
+
+function desenhar() {
+  $('abas').innerHTML = [['matriz', 'Matriz'], ['notas', 'Notas'], ['tarefas', 'Tarefas']]
+    .map(([k, r]) => `<div class="${E.aba === k ? 'on' : ''}" data-aba="${k}">${r}</div>`).join('');
+  $('novo').style.display = E.aba === 'matriz' ? '' : 'none';
+  if (E.aba === 'matriz' && !E.aberto) {
+    $('topo').innerHTML = '<h1>Matriz</h1><span class="mais" data-menu="1">⋯</span>';
+    $('tela').innerHTML = '<div class="mesa">' + Object.keys(Q).map((k) => {
+      const l = D.notas.filter((n) => n.q === k), novas = l.filter((n) => n.chegou).length;
+      return `<div class="quad" style="--cq:${Q[k].cor}" data-abrir="${k}"><div class="nome">${Q[k].nome}</div><div class="n">${l.length}</div>` +
+        `<div class="pede">${Q[k].pede}</div>` + l.slice(0, 2).map((n) => `<div class="amostra">${esc(n.t)}</div>`).join('') +
+        (novas ? `<div class="chegou"><i class="pulso"></i>${novas === 1 ? 'chegou 1 para você' : 'chegaram ' + novas}</div>` : '') + '</div>';
+    }).join('') + '</div>';
+  } else if (E.aba === 'matriz') {
+    const k = E.aberto, l = D.notas.filter((n) => n.q === k);
+    $('topo').innerHTML = `<span class="volta" data-voltar="1">‹ mesa</span><h1 style="color:${Q[k].cor};font-size:15px;letter-spacing:.06em">${Q[k].nome}</h1>`;
+    $('tela').innerHTML = l.length ? l.map((n) => `<div class="cartao" style="--cq:${Q[k].cor}">` +
+      (n.chegou ? `<div class="de"><i class="pulso"></i>chegou de ${esc(n.chegou)} · falta você classificar</div>` : '') +
+      `<div class="txt">${esc(n.t)}</div>` +
+      (k === 'delegar' ? `<div class="dono ${n.dono ? '' : 'sem'}" data-dono="${n.id}">${n.dono ? 'para ' + esc(n.dono) : 'SEM DONO · toque para dizer quem'}</div>` : '') +
+      `<div class="acoes"><span data-feita="${n.id}">feita</span><span data-mudar="${n.id}">${n.chegou ? 'classificar' : 'mudar'}</span><span data-enviar="${n.id}">enviar</span></div></div>`).join('')
+      : '<div class="vazio">Nada aqui. O botão amarelo escreve uma nota.</div>';
+  } else if (E.aba === 'notas') {
+    $('topo').innerHTML = '<h1>Notas</h1>';
+    $('tela').innerHTML = '<div class="campo-novo"><input id="novaNota" placeholder="título da nota nova, e Enter"></div>' +
+      D.longas.map((n) => `<div class="nota ${n.aberta ? 'on' : ''}"><div class="cab" data-nota="${n.id}">${esc(n.titulo)}<i>⌄</i></div><div class="corpo" contenteditable="${n.aberta}" data-corpo="${n.id}">${esc(n.corpo)}</div></div>`).join('');
+  } else {
+    $('topo').innerHTML = '<h1>Tarefas</h1>';
+    $('tela').innerHTML = '<div class="campo-novo"><input id="novaTarefa" placeholder="tarefa nova, e Enter"></div>' +
+      D.tarefas.map((t) => `<div class="tarefa ${t.feita ? 'feita' : ''}" data-tarefa="${t.id}"><i class="bola"></i><span class="t">${esc(t.t)}</span></div>`).join('') +
+      (D.tarefas.some((t) => t.feita) ? '<div class="acoes"><span class="fraca" data-limpar="1">limpar as feitas</span></div>' : '');
+  }
+}
+
+function folha(tipo, dado) {
+  E.folha = tipo;
+  const f = $('folha');
+  if (tipo === 'nova' || tipo === 'mudar') {
+    const r = E.rasc, pronto = r.t.trim() && r.imp !== null && r.urg !== null, k = pronto || (r.imp !== null && r.urg !== null) ? quadranteDe(r.imp, r.urg) : null;
+    f.innerHTML = (tipo === 'nova' ? `<textarea id="txtNota" rows="2" placeholder="o que é?">${esc(r.t)}</textarea>` : `<div style="font-size:16px">${esc(r.t)}</div>`) +
+      `<div class="perg">É importante?</div><div class="sn"><span class="${r.imp === true ? 'on' : ''}" data-imp="1">sim</span><span class="${r.imp === false ? 'on' : ''}" data-imp="0">não</span></div>` +
+      `<div class="perg">É urgente?</div><div class="sn"><span class="${r.urg === true ? 'on' : ''}" data-urg="1">sim</span><span class="${r.urg === false ? 'on' : ''}" data-urg="0">não</span></div>` +
+      (k === 'delegar' ? `<div class="perg">Para quem?</div><input id="txtDono" value="${esc(r.dono)}" placeholder="o nome de quem faz">` : '') +
+      `<div class="destino" style="--cq:${k ? Q[k].cor : 'inherit'}">${k ? 'vai para <b>' + Q[k].nome + '</b>' : 'responda as duas e ela cai no lugar certo'}</div>` +
+      `<div class="guardar ${pronto ? '' : 'nao'}" data-guardar="1">guardar</div>`;
+  } else if (tipo === 'menu') {
+    f.innerHTML = '<div class="linha-menu" data-copia="1">guardar cópia (baixa um arquivo)</div><label class="linha-menu" style="display:block">trazer cópia<input type="file" id="arq" accept="application/json" style="display:none"></label>' +
+      (D.notas.some((n) => n.exemplo) ? '<div class="linha-menu perigo" data-semexemplo="1">apagar os exemplos</div>' : '') +
+      '<div class="perg">Seu nome, para quem recebe uma nota sua</div><input id="txtMeu" value="' + esc(D.meuNome || '') + '" placeholder="como você assina">' +
+      '<div class="destino">Tudo fica neste aparelho. Trocar de celular sem guardar cópia zera.<br>versão ' + VERSAO + '</div>';
+  } else if (tipo === 'enviar') {
+    f.innerHTML = '<div class="perg">Mande este link. Quem tocar recebe a nota no painel dele.</div>' +
+      `<input id="txtLink" readonly value="${esc(dado)}"><div class="guardar" data-compartilhar="1">${navigator.share ? 'compartilhar' : 'copiar o link'}</div>`;
+  } else if (tipo === 'dono') {
+    f.innerHTML = '<div class="perg">Para quem?</div><input id="txtDono2" value="' + esc(dado.dono || '') + '" placeholder="o nome de quem faz"><div class="guardar" data-dono-ok="' + dado.id + '">guardar</div>';
+  }
+  $('veu').classList.add('on'); f.classList.add('on');
+  const foco = f.querySelector('textarea, input:not([readonly]):not([type=file])');
+  if (foco && tipo !== 'menu' && tipo !== 'mudar') setTimeout(() => foco.focus({ preventScroll: true }), 60);
+}
+function fechar() { E.folha = null; $('veu').classList.remove('on'); $('folha').classList.remove('on'); }
+let relogio;
+function avisar(texto, desfazer) {
+  const a = $('aviso'); a.innerHTML = esc(texto) + (desfazer ? '<span id="desf">desfazer</span>' : ''); a.classList.add('on');
+  if (desfazer) $('desf').onclick = () => { desfazer(); a.classList.remove('on'); desenhar(); };
+  clearTimeout(relogio); relogio = setTimeout(() => a.classList.remove('on'), 5000);
+}
+
+document.addEventListener('click', (ev) => {
+  const a = (s) => ev.target.closest(s); let e;
+  if ((e = a('[data-aba]'))) { E.aba = e.dataset.aba; E.aberto = null; desenhar(); return; }
+  if ((e = a('[data-abrir]'))) { E.aberto = e.dataset.abrir; desenhar(); return; }
+  if (a('[data-voltar]')) { E.aberto = null; desenhar(); return; }
+  if (a('#novo')) { E.rasc = { t: '', imp: null, urg: null, dono: '', id: null }; folha('nova'); return; }
+  if (a('#veu')) { fechar(); return; }
+  if (a('[data-menu]')) { folha('menu'); return; }
+  if ((e = a('[data-imp]')) || (e = a('[data-urg]'))) {
+    const t = $('txtNota'), d = $('txtDono'); if (t) E.rasc.t = t.value; if (d) E.rasc.dono = d.value;
+    if (e.dataset.imp !== undefined) E.rasc.imp = e.dataset.imp === '1'; else E.rasc.urg = e.dataset.urg === '1';
+    folha(E.folha); return;
+  }
+  if (a('[data-guardar]')) {
+    const t = $('txtNota'), d = $('txtDono'), r = E.rasc; if (t) r.t = t.value; if (d) r.dono = d.value;
+    const k = quadranteDe(r.imp, r.urg);
+    if (r.id) { const n = D.notas.find((x) => x.id === r.id); n.q = k; delete n.chegou; if (k === 'delegar') n.dono = r.dono || n.dono || ''; }
+    else D.notas.unshift({ id: D.seq++, q: k, t: r.t.trim(), dono: k === 'delegar' ? r.dono : undefined });
+    gravar(); fechar(); E.aberto = null; desenhar(); avisar('Foi para ' + Q[k].nome.toLowerCase() + '.'); return;
+  }
+  if ((e = a('[data-feita]'))) {
+    const i = D.notas.findIndex((x) => x.id === +e.dataset.feita), n = D.notas[i];
+    D.notas.splice(i, 1); (D.feitas = D.feitas || []).push(Object.assign({ em: Date.now() }, n)); gravar(); desenhar();
+    avisar('Feita.', () => { D.feitas.pop(); D.notas.splice(i, 0, n); gravar(); }); return;
+  }
+  if ((e = a('[data-mudar]'))) { const n = D.notas.find((x) => x.id === +e.dataset.mudar); E.rasc = { t: n.t, imp: null, urg: null, dono: n.dono || '', id: n.id }; folha('mudar'); return; }
+  if ((e = a('[data-enviar]'))) { folha('enviar', linkDe(D.notas.find((x) => x.id === +e.dataset.enviar))); return; }
+  if (a('[data-compartilhar]')) {
+    const l = $('txtLink').value;
+    if (navigator.share) navigator.share({ text: 'Tem uma nota para você:', url: l }).catch(() => {});
+    else { $('txtLink').select(); try { document.execCommand('copy'); } catch (x) {} avisar('Link copiado.'); }
+    fechar(); return;
+  }
+  if ((e = a('[data-dono]'))) { folha('dono', D.notas.find((x) => x.id === +e.dataset.dono)); return; }
+  if ((e = a('[data-dono-ok]'))) { D.notas.find((x) => x.id === +e.dataset.donoOk).dono = $('txtDono2').value.trim(); gravar(); fechar(); desenhar(); return; }
+  if (a('[data-semexemplo]')) { D.notas = D.notas.filter((n) => !n.exemplo); D.longas = []; D.tarefas = []; gravar(); fechar(); desenhar(); avisar('Exemplos apagados.'); return; }
+  if (a('[data-copia]')) {
+    const u = URL.createObjectURL(new Blob([JSON.stringify(D, null, 1)], { type: 'application/json' })), l = document.createElement('a');
+    l.href = u; l.download = 'painel-de-campo-copia.json'; l.click(); fechar(); avisar('Cópia guardada.'); return;
+  }
+  if ((e = a('[data-nota]'))) { const id = +e.dataset.nota; D.longas.forEach((n) => { n.aberta = n.id === id ? !n.aberta : false; }); gravar(); desenhar(); return; }
+  if ((e = a('[data-tarefa]'))) { const t = D.tarefas.find((x) => x.id === +e.dataset.tarefa); t.feita = !t.feita; gravar(); desenhar(); return; }
+  if (a('[data-limpar]')) { D.tarefas = D.tarefas.filter((t) => !t.feita); gravar(); desenhar(); return; }
+});
+// O campo NÃO redesenha a folha a cada tecla: só acende ou apaga o "guardar".
+document.addEventListener('input', (ev) => {
+  if (ev.target.id === 'txtNota') { E.rasc.t = ev.target.value; const g = document.querySelector('[data-guardar]'); if (g) g.classList.toggle('nao', !(E.rasc.t.trim() && E.rasc.imp !== null && E.rasc.urg !== null)); }
+  if (ev.target.id === 'txtMeu') { D.meuNome = ev.target.value.trim(); gravar(); }
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Enter') return;
+  if (ev.target.id === 'novaNota' && ev.target.value.trim()) { D.longas.unshift({ id: D.seq++, titulo: ev.target.value.trim(), corpo: '', aberta: true }); gravar(); desenhar(); }
+  if (ev.target.id === 'novaTarefa' && ev.target.value.trim()) { D.tarefas.unshift({ id: D.seq++, t: ev.target.value.trim(), feita: false }); gravar(); desenhar(); const n = $('novaTarefa'); if (n) n.focus(); }
+});
+document.addEventListener('focusout', (ev) => {
+  const id = ev.target.dataset && ev.target.dataset.corpo; if (!id) return;
+  const n = D.longas.find((x) => x.id === +id); if (n) { n.corpo = ev.target.innerText; gravar(); }
+});
+document.addEventListener('change', (ev) => {
+  if (ev.target.id !== 'arq' || !ev.target.files[0]) return;
+  const r = new FileReader();
+  r.onload = () => { try { const o = JSON.parse(r.result); if (o && Array.isArray(o.notas)) { D = o; gravar(); fechar(); desenhar(); avisar('Cópia trazida.'); } } catch (e) { avisar('Esse arquivo não é uma cópia do painel.'); } };
+  r.readAsText(ev.target.files[0]);
+});
+desenhar();
+
+// ── Abrir sem internet, e não ficar preso numa versão velha ──
+// O service worker busca na rede primeiro e guarda o que veio; sem rede, entrega
+// o que guardou. E o app que fica aberto por dias confere a versão ao voltar
+// para a frente: se saiu outra, ele avisa, e um toque recarrega.
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+function conferirVersao() {
+  fetch('versao.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (v) {
+    if (!v || String(v.versao) === VERSAO) return;
+    const a = $('aviso'); a.innerHTML = 'Tem versão nova.<span id="atual">atualizar</span>'; a.classList.add('on');
+    $('atual').onclick = function () { location.reload(); };
+  }).catch(function () {});
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden) { conferirVersao(); desenhar(); } });
+conferirVersao();
+</script>
+</body>
+</html>
