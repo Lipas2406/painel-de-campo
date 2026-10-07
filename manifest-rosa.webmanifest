@@ -1,0 +1,16 @@
+{
+  "name": "Painel de campo",
+  "short_name": "Painel",
+  "description": "Mesa de decisao, notas e tarefas. Tudo fica no aparelho.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2B2B2B",
+  "theme_color": "#2B2B2B",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icone-rosa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icone-rosa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -16,8 +16,12 @@
 <style>
   :root{
     --corpo:#2B2B2B; --tile:#303030; --sobre:#353535; --texto:#F2F2F2; --fraco:#C2C2C2; --apagado:#8C8C8C;
-    --sep:#505050; --acento:#E6B905; --bom:#7ADC9A; --ruim:#FF8585; --acao:#9CDCFE;
-    --q-fazer:#FF780A; --q-planejar:#F2F2F2; --q-delegar:#6CB6E8; --q-eliminar:#B38A5A;
+    --sep:#505050; --acento:#E6B905; --sobre-acento:#1A1A1A; --bom:#7ADC9A; --ruim:#FF8585; --acao:#9CDCFE;
+    /* As cores dos quadrantes vêm do TEMA (v1.2.0): quem as põe é aplicarTema().
+       --q-* é a cor pura (a borda, o ponto); --t-* é a mesma cor clareada o bastante
+       para ser lida como LETRA sobre o cinza do cartão. */
+    --q-fazer:#FF780A; --q-planejar:#FFF7F0; --q-delegar:#E6B905; --q-eliminar:#FEB157;
+    --t-fazer:#FF780A; --t-planejar:#FFF7F0; --t-delegar:#E6B905; --t-eliminar:#FEB157;
     --rapido:100ms; --medio:200ms; --abrir:280ms; --chega:cubic-bezier(.2,0,0,1);
   }
   @media (prefers-reduced-motion: reduce){ *{ transition-duration:.01ms !important; animation-duration:.01ms !important; } }
@@ -41,11 +45,11 @@
   .quad{background:var(--tile);border-radius:14px;padding:12px;display:flex;flex-direction:column;cursor:pointer;border-top:4px solid var(--cq);
         transition:transform var(--rapido) var(--chega), background var(--rapido)}
   .quad:active{transform:scale(.97);background:var(--sobre)}
-  .quad .nome{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--cq)}
+  .quad .nome{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--cqt)}
   .quad .n{font-size:40px;font-weight:600;line-height:1.05;margin-top:2px}
   .quad .pede{font-size:12px;color:var(--apagado);margin-bottom:8px}
   .quad .amostra{font-size:13px;color:var(--fraco);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:4px}
-  .quad .chegou{margin-top:auto;font-size:12px;color:var(--q-fazer);display:flex;align-items:center;gap:6px}
+  .quad .chegou{margin-top:auto;font-size:12px;color:var(--t-fazer);display:flex;align-items:center;gap:6px}
   .pulso{width:9px;height:9px;border-radius:50%;background:var(--q-fazer);animation:pulsa 1.4s ease-in-out infinite;flex:none}
   @keyframes pulsa{50%{transform:scale(1.6);opacity:.45}}
 
@@ -54,7 +58,7 @@
   .cartao .txt{font-size:16px}
   .cartao .dono{font-size:13px;margin-top:4px;color:var(--fraco)}
   .cartao .dono.sem{color:var(--ruim);font-weight:600}
-  .cartao .de{font-size:12px;color:var(--q-fazer);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .cartao .de{font-size:12px;color:var(--t-fazer);display:flex;align-items:center;gap:6px;margin-bottom:4px}
   .acoes{display:flex;gap:4px;margin-top:6px}
   .acoes span{color:var(--acao);font-size:14px;padding:10px 10px;min-height:44px;display:flex;align-items:center;cursor:pointer;border-radius:8px}
   .acoes span:active{background:var(--sobre)}
@@ -63,7 +67,7 @@
 
   /* ── o botão de escrever, onde o polegar alcança ── */
   .novo{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:var(--acento);
-        display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.5);transition:transform var(--rapido) var(--chega)}
+        color:var(--sobre-acento);display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.5);transition:transform var(--rapido) var(--chega), background var(--medio)}
   .novo:active{transform:translateX(-50%) scale(.92)}
   .novo svg{width:24px;height:24px}
   .abas{position:absolute;left:0;right:0;bottom:0;height:62px;background:#232323;display:flex;border-top:1px solid #3a3a3a}
@@ -83,15 +87,20 @@
   .sn{display:flex;gap:8px;margin-top:6px}
   .sn span{flex:1;text-align:center;padding:12px;border-radius:12px;border:1px solid var(--sep);color:var(--fraco);cursor:pointer;min-height:44px;
            transition:background var(--medio), color var(--medio), border-color var(--medio)}
-  .sn span.on{background:var(--acento);border-color:var(--acento);color:#1A1A1A;font-weight:600}
+  .sn span.on{background:var(--acento);border-color:var(--acento);color:var(--sobre-acento);font-weight:600}
   .destino{margin-top:16px;font-size:13px;color:var(--apagado);min-height:20px}
-  .destino b{color:var(--cq)}
-  .guardar{margin-top:14px;text-align:center;padding:14px;border-radius:14px;background:var(--acento);color:#1A1A1A;font-weight:600;cursor:pointer;
+  .destino b{color:var(--cqt)}
+  .guardar{margin-top:14px;text-align:center;padding:14px;border-radius:14px;background:var(--acento);color:var(--sobre-acento);font-weight:600;cursor:pointer;
            transition:opacity var(--medio), transform var(--rapido)}
   .guardar.nao{opacity:.35;pointer-events:none}
   .guardar:active{transform:scale(.98)}
   .linha-menu{padding:14px 4px;color:var(--acao);cursor:pointer;border-bottom:1px solid #3d3d3d}
   .linha-menu.perigo{color:var(--ruim)}
+  /* ── a cor do painel: sete bolinhas, e a escolhida ganha o aro ── */
+  .temas{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 4px}
+  .temas span{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid #333;box-shadow:0 0 0 1px #555;transition:box-shadow var(--medio), transform var(--rapido)}
+  .temas span:active{transform:scale(.92)}
+  .temas span.on{box-shadow:0 0 0 2px var(--texto)}
   .aviso{position:absolute;left:12px;right:12px;bottom:146px;background:#3a3a3a;border-radius:12px;padding:12px 14px;font-size:14px;display:flex;gap:12px;
          transform:translateY(20px);opacity:0;pointer-events:none;transition:all var(--medio) var(--chega)}
   .aviso.on{transform:none;opacity:1;pointer-events:auto}
@@ -121,7 +130,7 @@
     <div class="topo" id="topo"></div>
     <div class="tela" id="tela"></div>
     <div class="aviso" id="aviso"></div>
-    <div class="novo" id="novo" title="escrever"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16" stroke="#1A1A1A" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+    <div class="novo" id="novo" title="escrever"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div>
     <div class="abas" id="abas"></div>
     <div class="veu" id="veu"></div>
     <div class="folha" id="folha"></div>
@@ -130,14 +139,50 @@
 </div>
 
 <script>
-const VERSAO = '2';
+const VERSAO = 'v1.2.0';
 const CHAVE = 'painel-de-campo-v1';
 const Q = {
-  fazer:    { nome: 'FAZER AGORA', pede: 'é o trabalho de hoje',  cor: 'var(--q-fazer)',    imp: true,  urg: true },
-  planejar: { nome: 'PLANEJAR',    pede: 'marcar hora para fazer', cor: 'var(--q-planejar)', imp: true,  urg: false },
-  delegar:  { nome: 'DELEGAR',     pede: 'quem faz por você?',     cor: 'var(--q-delegar)',  imp: false, urg: true },
-  eliminar: { nome: 'ELIMINAR',    pede: 'pode ignorar',           cor: 'var(--q-eliminar)', imp: false, urg: false },
+  fazer:    { nome: 'FAZER AGORA', pede: 'é o trabalho de hoje',  cor: 'var(--q-fazer);--cqt:var(--t-fazer)',       imp: true,  urg: true },
+  planejar: { nome: 'PLANEJAR',    pede: 'marcar hora para fazer', cor: 'var(--q-planejar);--cqt:var(--t-planejar)', imp: true,  urg: false },
+  delegar:  { nome: 'DELEGAR',     pede: 'quem faz por você?',     cor: 'var(--q-delegar);--cqt:var(--t-delegar)',   imp: false, urg: true },
+  eliminar: { nome: 'ELIMINAR',    pede: 'pode ignorar',           cor: 'var(--q-eliminar);--cqt:var(--t-eliminar)', imp: false, urg: false },
 };
+
+// ── O TEMA (v1.2.0) ──
+// O seletor só troca as CORES que o app já tinha: o acento e as dos quadrantes.
+// São as mesmas sete opções do Painel de mesa, com as mesmas cores (forte, branco
+// e claro de cada tema, validadas uma a uma). O "delegar", que no Painel de mesa
+// é preto, aqui é o acento do tema: letra preta sobre cartão cinza não se lê.
+// O tema também troca o ícone e o manifesto, para o ícone da tela inicial ir
+// junto. Quem decide QUANDO o ícone da tela inicial muda é o Android, não o app.
+const TEMAS = {
+  amarelo: { acento: '#E6B905', forte: '#FF780A', branco: '#FFF7F0', claro: '#FEB157' },
+  verde:   { acento: '#7EC06B', forte: '#1B6F33', branco: '#E5FFE7', claro: '#A9DDA0' },
+  rosa:    { acento: '#F28FB1', forte: '#C4006A', branco: '#FEE1F5', claro: '#FF9CC8' },
+  roxo:    { acento: '#B492E0', forte: '#6A3FB8', branco: '#FAE0FF', claro: '#CDB6EE' },
+  azul:    { acento: '#6CB6E8', forte: '#1668C4', branco: '#EBEEFF', claro: '#9CCBF2' },
+  cinza:   { acento: '#C6C6C6', forte: '#4A4D52', branco: '#FFFFFF', claro: '#B9BCC1' },
+  carvao:  { acento: '#5A5A5A', forte: '#6B6F75', branco: '#FFFFFF', claro: '#C9CCD1' },
+};
+const rgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const luz = (h) => { const c = rgb(h); return (c[0] * 299 + c[1] * 587 + c[2] * 114) / 1000; };
+// Cor escura demais para ser letra no cartão cinza é misturada com branco até dar leitura.
+const legivel = (h) => {
+  let c = rgb(h), passo = 0;
+  while ((c[0] * 299 + c[1] * 587 + c[2] * 114) / 1000 < 150 && passo++ < 12) c = c.map((v) => Math.round(v + (255 - v) * 0.18));
+  return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+};
+function aplicarTema(nome) {
+  const t = TEMAS[nome] || TEMAS.amarelo, r = document.documentElement.style;
+  const cores = { fazer: t.forte, planejar: t.branco, delegar: t.acento, eliminar: t.claro };
+  r.setProperty('--acento', t.acento);
+  r.setProperty('--sobre-acento', luz(t.acento) > 150 ? '#1A1A1A' : '#FFFFFF');
+  Object.keys(cores).forEach((k) => { r.setProperty('--q-' + k, cores[k]); r.setProperty('--t-' + k, legivel(cores[k])); });
+  // O amarelo fica nos arquivos de sempre, para quem já instalou não mudar de endereço.
+  const sufixo = TEMAS[nome] && nome !== 'amarelo' ? '-' + nome : '';
+  const m = document.querySelector('link[rel="manifest"]'); if (m) m.href = 'manifest' + sufixo + '.webmanifest';
+  document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach((l) => { l.href = 'icone' + sufixo + '-192.png'; });
+}
 const quadranteDe = (imp, urg) => Object.keys(Q).find((k) => Q[k].imp === imp && Q[k].urg === urg);
 const EXEMPLOS = {
   notas: [
@@ -146,7 +191,7 @@ const EXEMPLOS = {
     { id: 3, q: 'delegar',  t: 'Verificar a ocorrência do atendimento de terça', dono: '', exemplo: true },
     { id: 4, q: 'fazer',    t: 'Ligar para o técnico sobre o atendimento em campo', exemplo: true },
   ],
-  longas: [{ id: 1, titulo: 'Como usar', corpo: 'Toque no botão amarelo para escrever.\nResponda as duas perguntas.\nA nota cai no quadrante certo.', aberta: false }],
+  longas: [{ id: 1, titulo: 'Como usar', corpo: 'Toque no botão redondo para escrever.\nResponda as duas perguntas.\nA nota cai no quadrante certo.', aberta: false }],
   tarefas: [{ id: 1, t: 'Exemplo de tarefa', feita: false }],
   seq: 10,
 };
@@ -154,6 +199,7 @@ let D;
 try { D = JSON.parse(localStorage.getItem(CHAVE)) || null; } catch (e) { D = null; }
 if (!D) D = JSON.parse(JSON.stringify(EXEMPLOS));
 const gravar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(D)); } catch (e) {} };
+aplicarTema(D.tema);
 
 const E = { aba: 'matriz', aberto: null, folha: null, rasc: { t: '', imp: null, urg: null, dono: '' } };
 const $ = (id) => document.getElementById(id);
@@ -193,17 +239,21 @@ function desenhar() {
     }).join('') + '</div>';
   } else if (E.aba === 'matriz') {
     const k = E.aberto, l = D.notas.filter((n) => n.q === k);
-    $('topo').innerHTML = `<span class="volta" data-voltar="1">‹ mesa</span><h1 style="color:${Q[k].cor};font-size:15px;letter-spacing:.06em">${Q[k].nome}</h1>`;
+    $('topo').innerHTML = `<span class="volta" data-voltar="1">‹ mesa</span><h1 style="--cq:${Q[k].cor};color:var(--cqt);font-size:15px;letter-spacing:.06em">${Q[k].nome}</h1>`;
     $('tela').innerHTML = l.length ? l.map((n) => `<div class="cartao" style="--cq:${Q[k].cor}">` +
       (n.chegou ? `<div class="de"><i class="pulso"></i>chegou de ${esc(n.chegou)} · falta você classificar</div>` : '') +
       `<div class="txt">${esc(n.t)}</div>` +
       (k === 'delegar' ? `<div class="dono ${n.dono ? '' : 'sem'}" data-dono="${n.id}">${n.dono ? 'para ' + esc(n.dono) : 'SEM DONO · toque para dizer quem'}</div>` : '') +
       `<div class="acoes"><span data-feita="${n.id}">feita</span><span data-mudar="${n.id}">${n.chegou ? 'classificar' : 'mudar'}</span><span data-enviar="${n.id}">enviar</span></div></div>`).join('')
-      : '<div class="vazio">Nada aqui. O botão amarelo escreve uma nota.</div>';
+      : '<div class="vazio">Nada aqui. O botão redondo escreve uma nota.</div>';
   } else if (E.aba === 'notas') {
     $('topo').innerHTML = '<h1>Notas</h1>';
     $('tela').innerHTML = '<div class="campo-novo"><input id="novaNota" placeholder="título da nota nova, e Enter"></div>' +
-      D.longas.map((n) => `<div class="nota ${n.aberta ? 'on' : ''}"><div class="cab" data-nota="${n.id}">${esc(n.titulo)}<i>⌄</i></div><div class="corpo" contenteditable="${n.aberta}" data-corpo="${n.id}">${esc(n.corpo)}</div></div>`).join('');
+      // A nota ABERTA ganha o "apagar" (v1.2.0: ele reparou que não havia como
+      // excluir uma nota, nem expandindo). Fechada não mostra: ação só existe
+      // quando há o que fazer, e apagar sem ver o que é não é o gesto certo.
+      D.longas.map((n) => `<div class="nota ${n.aberta ? 'on' : ''}"><div class="cab" data-nota="${n.id}">${esc(n.titulo)}<i>⌄</i></div><div class="corpo" contenteditable="${n.aberta}" data-corpo="${n.id}">${esc(n.corpo)}</div>` +
+        (n.aberta ? `<div class="acoes" style="padding:0 4px 6px"><span class="fraca" data-apagar-nota="${n.id}">apagar</span></div>` : '') + '</div>').join('');
   } else {
     $('topo').innerHTML = '<h1>Tarefas</h1>';
     $('tela').innerHTML = '<div class="campo-novo"><input id="novaTarefa" placeholder="tarefa nova, e Enter"></div>' +
@@ -227,7 +277,9 @@ function folha(tipo, dado) {
     f.innerHTML = '<div class="linha-menu" data-copia="1">guardar cópia (baixa um arquivo)</div><label class="linha-menu" style="display:block">trazer cópia<input type="file" id="arq" accept="application/json" style="display:none"></label>' +
       (D.notas.some((n) => n.exemplo) ? '<div class="linha-menu perigo" data-semexemplo="1">apagar os exemplos</div>' : '') +
       '<div class="perg">Seu nome, para quem recebe uma nota sua</div><input id="txtMeu" value="' + esc(D.meuNome || '') + '" placeholder="como você assina">' +
-      '<div class="destino">Tudo fica neste aparelho. Trocar de celular sem guardar cópia zera.<br>versão ' + VERSAO + '</div>';
+      '<div class="perg">Cor do painel</div><div class="temas">' + Object.keys(TEMAS).map((k) =>
+        `<span class="${(D.tema || 'amarelo') === k ? 'on' : ''}" data-tema="${k}" title="${k}" style="background:${TEMAS[k].acento}"></span>`).join('') + '</div>' +
+      '<div class="destino">Tudo fica neste aparelho. Trocar de celular sem guardar cópia zera.<br>' + VERSAO + '</div>';
   } else if (tipo === 'enviar') {
     f.innerHTML = '<div class="perg">Mande este link. Quem tocar recebe a nota no painel dele.</div>' +
       `<input id="txtLink" readonly value="${esc(dado)}"><div class="guardar" data-compartilhar="1">${navigator.share ? 'compartilhar' : 'copiar o link'}</div>`;
@@ -273,6 +325,12 @@ document.addEventListener('click', (ev) => {
   if (a('#novo')) { E.rasc = { t: '', imp: null, urg: null, dono: '', id: null }; folha('nova'); return; }
   if (a('#veu')) { fechar(); return; }
   if (a('[data-menu]')) { folha('menu'); return; }
+  // Trocar a cor NÃO fecha o menu: a pessoa quer ver e trocar de novo.
+  if ((e = a('[data-tema]'))) {
+    D.tema = e.dataset.tema; gravar(); aplicarTema(D.tema);
+    document.querySelectorAll('[data-tema]').forEach((x) => x.classList.toggle('on', x === e));
+    return;
+  }
   if ((e = a('[data-imp]')) || (e = a('[data-urg]'))) {
     const t = $('txtNota'), d = $('txtDono'); if (t) E.rasc.t = t.value; if (d) E.rasc.dono = d.value;
     if (e.dataset.imp !== undefined) E.rasc.imp = e.dataset.imp === '1'; else E.rasc.urg = e.dataset.urg === '1';
@@ -305,6 +363,13 @@ document.addEventListener('click', (ev) => {
     const u = URL.createObjectURL(new Blob([JSON.stringify(D, null, 1)], { type: 'application/json' })), l = document.createElement('a');
     l.href = u; l.download = 'painel-de-campo-copia.json'; l.click(); fechar(); avisar('Cópia guardada.'); return;
   }
+  if ((e = a('[data-apagar-nota]'))) {
+    // O texto que está na tela é guardado antes: ela pode ter escrito e tocado em "apagar" sem sair do campo.
+    const i = D.longas.findIndex((x) => x.id === +e.dataset.apagarNota), n = D.longas[i]; if (!n) return;
+    const c = document.querySelector('[data-corpo="' + n.id + '"]'); if (c) n.corpo = c.innerText;
+    D.longas.splice(i, 1); gravar(); desenhar();
+    avisar('Nota apagada.', () => { D.longas.splice(i, 0, n); gravar(); }); return;
+  }
   if ((e = a('[data-nota]'))) { const id = +e.dataset.nota; D.longas.forEach((n) => { n.aberta = n.id === id ? !n.aberta : false; }); gravar(); desenhar(); return; }
   if ((e = a('[data-tarefa]'))) { const t = D.tarefas.find((x) => x.id === +e.dataset.tarefa); t.feita = !t.feita; gravar(); desenhar(); return; }
   if (a('[data-limpar]')) { D.tarefas = D.tarefas.filter((t) => !t.feita); gravar(); desenhar(); return; }
@@ -326,7 +391,7 @@ document.addEventListener('focusout', (ev) => {
 document.addEventListener('change', (ev) => {
   if (ev.target.id !== 'arq' || !ev.target.files[0]) return;
   const r = new FileReader();
-  r.onload = () => { try { const o = JSON.parse(r.result); if (o && Array.isArray(o.notas)) { D = o; gravar(); fechar(); desenhar(); avisar('Cópia trazida.'); } } catch (e) { avisar('Esse arquivo não é uma cópia do painel.'); } };
+  r.onload = () => { try { const o = JSON.parse(r.result); if (o && Array.isArray(o.notas)) { D = o; gravar(); aplicarTema(D.tema); fechar(); desenhar(); avisar('Cópia trazida.'); } } catch (e) { avisar('Esse arquivo não é uma cópia do painel.'); } };
   r.readAsText(ev.target.files[0]);
 });
 desenhar();
